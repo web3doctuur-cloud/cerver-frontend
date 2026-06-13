@@ -116,20 +116,7 @@ cp .env.example .env
 
 # Start development server
 npm run dev
-sequenceDiagram
-    participant U as User
-    participant F as Frontend
-    participant A as API
-    participant D as Database
 
-    U->>F: Enter credentials
-    F->>A: POST /api/Auth/login
-    A->>D: Verify credentials
-    D-->>A: User found
-    A-->>F: JWT Token + Role
-    F->>F: Store token in localStorage
-    F->>F: Decode JWT for role
-    F-->>U: Redirect to dashboard
 Test Credentials
 Role |	Email |	Password
 Admin |	admin@cerver.com |	Admin@123
@@ -148,6 +135,7 @@ vercel --prod
 # - Build command: npm run build
 # - Output directory: dist
 
+---
  Testing the Application
 **Test User Flow**
 1) Register a new account at /register
@@ -174,6 +162,21 @@ vercel --prod
 4) Create New Membership from admin panel
 
 5) View Analytics dashboard
+---
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant A as API
+    participant D as Database
+
+    U->>F: Enter credentials
+    F->>A: POST /api/Auth/login
+    A->>D: Verify credentials
+    D-->>A: User found
+    A-->>F: JWT Token + Role
+    F->>F: Store token in localStorage
+    F->>F: Decode JWT for role
+    F-->>U: Redirect to dashboard
 
 👨‍💻 Author
 Yusuf Rodiah Hadizah
