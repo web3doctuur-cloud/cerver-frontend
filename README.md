@@ -163,21 +163,6 @@ vercel --prod
 
 5) View Analytics dashboard
 ---
-sequenceDiagram
-    participant U as User
-    participant F as Frontend
-    participant A as API
-    participant D as Database
-
-    U->>F: Enter credentials
-    F->>A: POST /api/Auth/login
-    A->>D: Verify credentials
-    D-->>A: User found
-    A-->>F: JWT Token + Role
-    F->>F: Store token in localStorage
-    F->>F: Decode JWT for role
-    F-->>U: Redirect to dashboard
-
 👨‍💻 Author
 Yusuf Rodiah Hadizah
 
