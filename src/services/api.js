@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL, endpoints } from '../config/api';
+import toast from 'react-hot-toast';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -12,7 +13,7 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
-});
+}, (error) => Promise.reject(error));
 
 api.interceptors.response.use(
   (response) => response,
@@ -21,6 +22,12 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
+    // Show error toast for all errors except maybe 404s?
+    const errorMsg = error.response?.data?.message || 
+                     (Array.isArray(error.response?.data?.errors) 
+                      ? error.response.data.errors.join(', ') 
+                      : 'An error occurred');
+    toast.error(errorMsg);
     return Promise.reject(error);
   }
 );

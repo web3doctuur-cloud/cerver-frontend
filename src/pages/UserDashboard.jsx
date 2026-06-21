@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api, endpoints } from '../services/api';
-import { getBackendAssetUrl } from '../config/api';
+import { getBackendAssetUrl, API_BASE_URL } from '../config/api';
 import MainLayout from '../layouts/MainLayout';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -9,10 +9,11 @@ import toast from 'react-hot-toast';
 const UserDashboard = () => {
   const { user } = useAuth();
   const [requests, setRequests] = useState([]);
+  const [myCertificates, setMyCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('requests');
 
-  const certificates = requests.filter((request) => request.status === 'Approved' && request.certificateNumber);
+  const certificates = requests.filter((r) => r.status === 'Approved' && r.certificateNumber);
 
   useEffect(() => {
     fetchData();
@@ -20,13 +21,28 @@ const UserDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const requestsRes = await api.get(endpoints.requests.getMy);
+      const [requestsRes, certsRes] = await Promise.all([
+        api.get(endpoints.requests.getMy),
+        api.get(endpoints.certificates.my).catch(() => ({ data: [] })), // graceful fallback
+      ]);
       setRequests(requestsRes.data);
+      setMyCertificates(certsRes.data || []);
     } catch (error) {
       console.error('Error:', error);
       toast.error('Failed to load dashboard');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteRequest = async (id) => {
+    if (!confirm('Delete this request? This cannot be undone.')) return;
+    try {
+      await api.delete(endpoints.requests.delete(id));
+      toast.success('Request deleted');
+      fetchData();
+    } catch {
+      toast.error('Failed to delete request');
     }
   };
 
@@ -82,36 +98,32 @@ const UserDashboard = () => {
               <p className="text-slate-400 text-sm sm:text-base mt-1">Signed in as {user?.email}</p>
             </div>
           </div>
-          <a
-            href="/"
+          <Link
+            to="/memberships"
             className="bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold px-6 py-2.5 rounded-xl transition-all duration-200 shadow-lg text-sm"
           >
             Apply for Membership
-          </a>
+          </Link>
         </div>
 
         {/* Navigation Tabs */}
         <div className="flex border-b border-slate-200 gap-6 mb-8">
-          <button
-            onClick={() => setActiveTab('requests')}
-            className={`pb-4 px-1 border-b-2 font-bold text-sm sm:text-base transition-all flex items-center gap-2 ${
-              activeTab === 'requests'
-                ? 'border-amber-500 text-gray-900'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            Applications ({requests.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('certificates')}
-            className={`pb-4 px-1 border-b-2 font-bold text-sm sm:text-base transition-all flex items-center gap-2 ${
-              activeTab === 'certificates'
-                ? 'border-amber-500 text-gray-900'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            Certificates ({certificates.length})
-          </button>
+          {[
+            { id: 'requests', label: `Applications (${requests.length})` },
+            { id: 'certificates', label: `Certificates (${certificates.length})` },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`pb-4 px-1 border-b-2 font-bold text-sm sm:text-base transition-all flex items-center gap-2 ${
+                activeTab === tab.id
+                  ? 'border-amber-500 text-gray-900'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Requests Tab */}
@@ -126,9 +138,9 @@ const UserDashboard = () => {
                 </div>
                 <p className="text-slate-500 font-medium text-lg">No active requests found</p>
                 <p className="text-slate-400 text-sm mt-1">You haven't submitted any membership applications yet.</p>
-                <a href="/" className="mt-5 inline-block bg-slate-950 text-white font-bold px-6 py-2.5 rounded-xl hover:bg-amber-500 hover:text-gray-950 transition-all duration-200">
+                <Link to="/memberships" className="mt-5 inline-block bg-slate-950 text-white font-bold px-6 py-2.5 rounded-xl hover:bg-amber-500 hover:text-gray-950 transition-all duration-200">
                   Browse Memberships →
-                </a>
+                </Link>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -143,18 +155,41 @@ const UserDashboard = () => {
                         <p><span className="font-semibold text-slate-700">Applicant:</span> {request.fullName}</p>
                         <p><span className="font-semibold text-slate-700">Phone:</span> {request.phoneNumber}</p>
                         <p><span className="font-semibold text-slate-700">Applied on:</span> {new Date(request.requestedAt).toLocaleDateString()}</p>
+                        {request.status === 'Rejected' && (
+                          <p className="text-rose-600"><span className="font-semibold">Rejection reason:</span> {request.rejectionReason || 'Not specified'}</p>
+                        )}
                       </div>
                     </div>
-                    {request.status === 'Approved' && request.certificateNumber && (
-                      <div className="mt-6 pt-4 border-t border-slate-100 flex gap-3">
-                        <Link
-                          to={`/certificates/${request.id}`}
-                          className="flex-1 text-center bg-gray-950 text-white py-2.5 rounded-xl hover:bg-amber-500 hover:text-gray-950 font-bold transition-all duration-200 text-sm shadow-sm"
+                    <div className="mt-6 pt-4 border-t border-slate-100">
+                      {request.status === 'Approved' && request.certificateNumber ? (
+                        <div className="flex gap-3">
+                          <Link
+                            to={`/certificates/${request.id}`}
+                            className="flex-1 text-center bg-gray-950 text-white py-2.5 rounded-xl hover:bg-amber-500 hover:text-gray-950 font-bold transition-all duration-200 text-sm shadow-sm"
+                          >
+                            View Certificate
+                          </Link>
+                          <a
+                            href={`${API_BASE_URL}${endpoints.certificates.download(request.certificateNumber)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex-1 text-center border border-slate-200 text-slate-700 py-2.5 rounded-xl hover:bg-slate-50 font-semibold transition-all duration-200 text-sm"
+                          >
+                            Download
+                          </a>
+                        </div>
+                      ) : request.status !== 'Rejected' && (
+                        <button
+                          onClick={() => handleDeleteRequest(request.id)}
+                          className="text-xs text-slate-400 hover:text-rose-600 transition-colors font-medium flex items-center gap-1"
                         >
-                          View Certificate
-                        </Link>
-                      </div>
-                    )}
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Cancel / Delete Request
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -181,10 +216,14 @@ const UserDashboard = () => {
                   <div key={cert.id} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col justify-between">
                     <div>
                       <div className="border-b border-slate-50 pb-4 mb-4">
-                        <h3 className="font-extrabold text-lg text-slate-900 group-hover:text-amber-600 transition-colors">{cert.membership?.title}</h3>
-                        <p className="text-xs font-mono text-slate-400 mt-1">Cert ID: {cert.certificateNumber}</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Valid Certificate</span>
+                        </div>
+                        <h3 className="font-extrabold text-lg text-slate-900">{cert.membership?.title}</h3>
+                        <p className="text-xs font-mono text-slate-400 mt-1">#{cert.certificateNumber}</p>
                       </div>
-                      <div className="space-y-2 text-slate-600 text-sm mb-6">
+                      <div className="space-y-2 text-slate-600 text-sm mb-4">
                         <p><span className="font-medium text-slate-500">Issued to:</span> {cert.fullName}</p>
                         <p><span className="font-medium text-slate-500">Approved:</span> {cert.approvedAt ? new Date(cert.approvedAt).toLocaleDateString() : 'N/A'}</p>
                       </div>
@@ -194,16 +233,25 @@ const UserDashboard = () => {
                         to={`/certificates/${cert.id}`}
                         className="flex-1 text-center bg-gray-950 text-white py-2.5 rounded-xl hover:bg-amber-500 hover:text-gray-950 font-bold transition-all duration-200 text-sm shadow-sm"
                       >
-                        View & Print
+                        View &amp; Print
                       </Link>
+                      <a
+                        href={`${API_BASE_URL}${endpoints.certificates.download(cert.certificateNumber)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-1 text-center border border-slate-200 text-slate-700 py-2.5 rounded-xl hover:bg-slate-50 font-semibold transition-all duration-200 text-sm"
+                      >
+                        Download PDF
+                      </a>
                       {cert.certificatePath && (
                         <a
                           href={getBackendAssetUrl(cert.certificatePath)}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex-1 text-center border border-slate-200 text-slate-700 py-2.5 rounded-xl hover:bg-slate-50 font-semibold transition-all duration-200 text-sm"
+                          className="text-center border border-amber-200 text-amber-700 py-2.5 px-3 rounded-xl hover:bg-amber-50 font-semibold transition-all duration-200 text-sm"
+                          title="Download from server"
                         >
-                          Download PDF
+                          ↓ Alt
                         </a>
                       )}
                     </div>

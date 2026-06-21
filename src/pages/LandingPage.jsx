@@ -4,6 +4,27 @@ import { api, endpoints } from '../services/api';
 import MainLayout from '../layouts/MainLayout';
 import { useAuth } from '../context/AuthContext';
 
+// Parse stored string into list items
+const parseList = (str) => {
+  if (!str) return [];
+  return str.split(/[\n;]+/).map((s) => s.trim()).filter(Boolean);
+};
+
+const BulletList = ({ str, dark = false }) => {
+  const items = parseList(str);
+  if (items.length === 0) return null;
+  return (
+    <ul className="space-y-1">
+      {items.map((item, idx) => (
+        <li key={idx} className={`flex items-start gap-1.5 text-sm ${dark ? 'text-slate-300' : 'text-slate-500'}`}>
+          <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+          {item}
+        </li>
+      ))}
+    </ul>
+  );
+};
+
 const LandingPage = () => {
   const [memberships, setMemberships] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +56,7 @@ const LandingPage = () => {
             Empowering Secure Verifications
           </div>
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight mb-8 bg-gradient-to-r from-white via-amber-200 to-amber-500 bg-clip-text text-transparent">
-            Digital Certificates <br className="hidden sm:inline" /> Made Simple & Secure
+            Digital Certificates <br className="hidden sm:inline" /> Made Simple &amp; Secure
           </h1>
           <p className="max-w-2xl mx-auto text-lg sm:text-xl text-slate-300 mb-10 leading-relaxed">
             Apply for professional memberships, track approvals, and download fully verifiable digital certificates complete with cryptographically linked QR codes.
@@ -88,42 +109,50 @@ const LandingPage = () => {
             {memberships.map((membership) => (
               <div
                 key={membership.id}
-                className="group relative bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:border-amber-500/30 transition-all duration-300 p-8 flex flex-col justify-between"
+                className="group relative bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:border-amber-500/30 transition-all duration-300 flex flex-col"
               >
-                <div>
-                  <div className="flex justify-between items-start mb-6">
+                {/* Card Header */}
+                <div className="p-8 pb-0">
+                  <div className="flex justify-between items-start mb-4">
                     <h3 className="text-xl font-bold text-gray-900 group-hover:text-amber-600 transition-colors">
                       {membership.title}
                     </h3>
-                    <span className="bg-amber-50 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-md">
+                    <span className="bg-amber-50 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-md flex-shrink-0">
                       Active
                     </span>
                   </div>
-                  <p className="text-slate-600 mb-6 line-clamp-3 leading-relaxed">
-                    {membership.benefits}
-                  </p>
-                  <div className="border-t border-slate-100 pt-6 mb-8">
-                    <p className="text-sm font-semibold text-slate-800 mb-2">Requirements:</p>
-                    <p className="text-sm text-slate-500 line-clamp-3">
-                      {membership.requirements}
-                    </p>
-                  </div>
                 </div>
-                {isAuthenticated ? (
-                  <Link
-                    to={`/memberships/${membership.id}/request`}
-                    className="block w-full text-center bg-gray-950 text-white py-3 rounded-xl hover:bg-amber-500 hover:text-gray-950 font-bold transition-all duration-200 shadow-sm"
-                  >
-                    Apply Now
-                  </Link>
-                ) : (
-                  <Link
-                    to="/login"
-                    className="block w-full text-center border border-slate-200 text-slate-700 py-3 rounded-xl hover:bg-slate-50 font-semibold transition-all duration-200"
-                  >
-                    Login to Apply
-                  </Link>
-                )}
+
+                {/* Benefits */}
+                <div className="px-8 py-4 flex-1">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Benefits</p>
+                  <BulletList str={membership.benefits} />
+                </div>
+
+                {/* Requirements */}
+                <div className="px-8 py-4 border-t border-gray-50">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Requirements</p>
+                  <BulletList str={membership.requirements} />
+                </div>
+
+                {/* CTA */}
+                <div className="p-8 pt-4">
+                  {isAuthenticated ? (
+                    <Link
+                      to={`/memberships/${membership.id}/request`}
+                      className="block w-full text-center bg-gray-950 text-white py-3 rounded-xl hover:bg-amber-500 hover:text-gray-950 font-bold transition-all duration-200 shadow-sm"
+                    >
+                      Apply Now
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/login"
+                      className="block w-full text-center border border-slate-200 text-slate-700 py-3 rounded-xl hover:bg-slate-50 font-semibold transition-all duration-200"
+                    >
+                      Login to Apply
+                    </Link>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -142,39 +171,33 @@ const LandingPage = () => {
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            <div className="bg-slate-800/50 border border-slate-800 p-8 rounded-2xl hover:-translate-y-1 transition-transform duration-300">
-              <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-center mb-6">
-                <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+            {[
+              {
+                icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+                title: 'Verified Certificates',
+                desc: 'Each certificate is embedded with a unique QR code allowing instantly verifiable authentication via phone or scanner.',
+              },
+              {
+                icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
+                title: 'Enterprise-Grade Security',
+                desc: 'Our platform uses industry standard JWT authentication and authorization protocols to secure your user records.',
+              },
+              {
+                icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+                title: 'Automatic Record Generation',
+                desc: 'Once approved, a certificate is automatically generated, numbered, and recorded, ready for you to download or print.',
+              },
+            ].map((feature) => (
+              <div key={feature.title} className="bg-slate-800/50 border border-slate-800 p-8 rounded-2xl hover:-translate-y-1 transition-transform duration-300">
+                <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-center mb-6">
+                  <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={feature.icon} />
+                  </svg>
+                </div>
+                <h3 className="font-bold text-lg mb-3">{feature.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{feature.desc}</p>
               </div>
-              <h3 className="font-bold text-lg mb-3">Verified Certificates</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Each certificate is embedded with a unique QR code allowing instantly verifiable authentication via phone or scanner.
-              </p>
-            </div>
-            <div className="bg-slate-800/50 border border-slate-800 p-8 rounded-2xl hover:-translate-y-1 transition-transform duration-300">
-              <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-center mb-6">
-                <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-lg mb-3">Enterprise-Grade Security</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Our platform uses industry standard JWT authentication and authorization protocols to secure your user records.
-              </p>
-            </div>
-            <div className="bg-slate-800/50 border border-slate-800 p-8 rounded-2xl hover:-translate-y-1 transition-transform duration-300">
-              <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-center mb-6">
-                <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-lg mb-3">Automatic Record Generation</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Once approved, a certificate is automatically generated, numbered, and recorded, ready for you to download or print.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </div>

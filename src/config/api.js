@@ -6,6 +6,9 @@ export const endpoints = {
     login: '/Auth/login',
     register: '/Auth/register',
   },
+  health: {
+    check: '/health',
+  },
   memberships: {
     getActive: '/Memberships',
     getAll: '/Memberships/all',
@@ -26,8 +29,13 @@ export const endpoints = {
     delete: (id) => `/MembershipRequests/${id}`,
   },
   certificates: {
+    my: '/Certificates/my',
+    all: '/Certificates/all',
     download: (certNumber) => `/Certificates/download/${certNumber}`,
     verify: (certNumber) => `/Certificates/verify/${certNumber}`,
+    verifyDetails: (certNumber) => `/Certificates/verify-details/${certNumber}`,
+    revoke: (certNumber) => `/Certificates/revoke/${certNumber}`,
+    qrcode: (certNumber) => `/Certificates/qrcode/${certNumber}`,
   },
   admin: {
     dashboard: '/Admin/dashboard',
